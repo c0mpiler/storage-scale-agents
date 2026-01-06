@@ -1,10 +1,10 @@
 # IBM Storage Scale AI Agents
 
-Multi-agent system for IBM Storage Scale administration built on [BeeAI AgentStack](https://agentstack.beeai.dev).
+AI agent for IBM Storage Scale administration built on [BeeAI AgentStack](https://agentstack.beeai.dev).
 
 ## Overview
 
-Scale Agents provides an intelligent, conversational interface to IBM Storage Scale cluster management. It uses a hierarchical multi-agent architecture where an orchestrator routes natural language requests to specialized domain agents, each with access to specific MCP (Model Context Protocol) tools.
+Scale Agents provides an intelligent, conversational interface to IBM Storage Scale cluster management. It uses a single unified agent that routes natural language requests to specialized internal handlers, each with access to specific MCP (Model Context Protocol) tools.
 
 ## Architecture
 
@@ -12,17 +12,17 @@ Scale Agents provides an intelligent, conversational interface to IBM Storage Sc
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                         AGENTSTACK PLATFORM LAYER                           │
 │  ┌─────────────────────────────────────────────────────────────────────┐   │
-│  │                     ORCHESTRATOR AGENT (Router)                      │   │
+│  │                     SCALE_AGENT (Single Entry Point)                 │   │
 │  │  - Intent classification (pattern or LLM)                           │   │
-│  │  - Persona detection                                                │   │
-│  │  - Agent dispatch                                                   │   │
+│  │  - Internal routing to specialized handlers                         │   │
 │  └─────────────────────────────────────────────────────────────────────┘   │
 │                                    │                                        │
 │         ┌──────────────┬───────────┼───────────┬──────────────┐            │
 │         ▼              ▼           ▼           ▼              ▼            │
 │  ┌────────────┐ ┌────────────┐ ┌────────────┐ ┌────────────┐ ┌──────────┐ │
 │  │   Health   │ │  Storage   │ │   Quota    │ │Performance │ │  Admin   │ │
-│  │   Agent    │ │   Agent    │ │   Agent    │ │   Agent    │ │  Agent   │ │
+│  │  Handler   │ │  Handler   │ │  Handler   │ │  Handler   │ │ Handler  │ │
+│  │ (internal) │ │ (internal) │ │ (internal) │ │ (internal) │ │(internal)│ │
 │  └────────────┘ └────────────┘ └────────────┘ └────────────┘ └──────────┘ │
 │         │              │           │           │              │            │
 │  ┌──────┴──────────────┴───────────┴───────────┴──────────────┴──────┐    │
@@ -43,23 +43,24 @@ Scale Agents provides an intelligent, conversational interface to IBM Storage Sc
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-## Agents
+## Internal Handlers
 
-| Agent | Purpose | Persona | Tools |
-|-------|---------|---------|-------|
-| **Orchestrator** | Intent classification and routing | All users | N/A |
-| **Health** | Monitoring, diagnostics, alerting | SREs, NOC | 9 read-only tools |
-| **Storage** | Filesystem/fileset lifecycle | Storage Admins | 15 tools |
-| **Quota** | Capacity governance | Storage Admins, Project Leads | 4 tools |
-| **Performance** | Bottleneck analysis | Performance Engineers | 10 read-only tools |
-| **Admin** | Cluster topology, snapshots | Cluster Administrators | 40+ tools |
+The single `scale_agent` automatically routes requests to specialized internal handlers:
+
+| Handler | Purpose | Example Queries |
+|---------|---------|-----------------|
+| **Health** | Monitoring, diagnostics, alerting | "Show cluster health", "List node events" |
+| **Storage** | Filesystem/fileset lifecycle | "List filesystems", "Create fileset data01" |
+| **Quota** | Capacity governance | "Check quota for project01", "Set quota limit" |
+| **Performance** | Bottleneck analysis | "Analyze performance", "Show throughput metrics" |
+| **Admin** | Cluster topology, snapshots | "Create snapshot", "Add remote cluster" |
 
 ## Prerequisites
 
 - Python 3.12+
 - [uv](https://docs.astral.sh/uv/) package manager
 - Running instance of [scale-mcp-server](https://github.ibm.com/HPC-POCs/scale-mcp-server)
-- (Optional) Ollama with a function-calling model for LLM reasoning
+- (Optional) Ollama with a function calling model for LLM reasoning
 
 ## Installation
 
@@ -68,7 +69,7 @@ cd scale-agents
 uv venv
 source .venv/bin/activate
 
-# Basic installation (pattern-based routing)
+# Basic installation (pattern based routing)
 uv pip install -e .
 
 # With LLM reasoning support
@@ -99,146 +100,56 @@ Edit `config.yaml`:
 ```yaml
 # MCP Server Connection
 mcp:
-  server_url: "http://your-mcp-server:8000/mcp"
-  timeout: 60.0
-  domain: "StorageScaleDomain"
+  server_url: "http://localhost:8000/mcp"
 
-# LLM Reasoning (optional)
+# LLM Configuration (optional)
 llm:
-  enabled: true
+  enabled: false
   provider: "ollama"
   model: "qwen3:30b-a3b"
   base_url: "http://localhost:11434"
 
-# Server Settings
+# Server Configuration
 server:
   host: "0.0.0.0"
   port: 8080
-
-# Security
-security:
-  require_confirmation: true
-  confirmation_timeout: 300
-
-# Logging
-logging:
-  level: "INFO"
-  format: "json"
-
-# Per-agent configuration
-agents:
-  health:
-    enabled: true
-  storage:
-    enabled: true
-  quota:
-    enabled: true
-  performance:
-    enabled: true
-  admin:
-    enabled: true
 ```
 
 ### Environment Variables
 
-Environment variables use the format `SCALE_AGENTS_<SECTION>_<KEY>`:
+Override any setting with environment variables:
 
 ```bash
-# MCP Server
-export SCALE_AGENTS_MCP_SERVER_URL=http://localhost:8000/mcp
-
-# LLM
-export SCALE_AGENTS_LLM_ENABLED=true
-export SCALE_AGENTS_LLM_PROVIDER=ollama
-export SCALE_AGENTS_LLM_MODEL=qwen3:30b-a3b
-
-# Server
-export SCALE_AGENTS_HOST=0.0.0.0
-export SCALE_AGENTS_PORT=8080
+export SCALE_AGENTS_MCP_SERVER_URL="http://scale-mcp:8000/mcp"
+export SCALE_AGENTS_LLM_ENABLED="true"
+export SCALE_AGENTS_LLM_PROVIDER="ollama"
+export SCALE_AGENTS_LLM_MODEL="qwen3:30b-a3b"
 ```
 
-## Usage
+## Running
 
-### Start the Agent Server
+### Standalone Server
 
 ```bash
-# Use config.yaml in current directory
-uv run server
-
-# Specify custom config path
-SCALE_AGENTS_CONFIG=/path/to/config.yaml uv run server
-
-# Or directly via Python
+# Using the module
 python -m scale_agents.server
+
+# Or using the run function
+python -c "from scale_agents import run; run()"
 ```
 
-### Via AgentStack
+### With AgentStack
 
 ```bash
-# Add agents to AgentStack (GitHub URL)
-agentstack add https://github.ibm.com/HPC-POCs/scale-agents
+# Add to AgentStack
+agentstack add /path/to/scale-agents
 
-# Run orchestrator (auto-routes to appropriate agent)
-agentstack run scale_orchestrator "What is the health status of all nodes?"
+# List registered agents
+agentstack list
 
-# Direct agent access
-agentstack run health_agent "Show filesystem health for gpfs01"
-agentstack run storage_agent "List filesets in filesystem scratch"
-agentstack run quota_agent "What is the usage of fileset user-homes?"
-agentstack run admin_agent "Create snapshot daily-backup in filesystem gpfs01"
+# Run the agent
+agentstack run scale_agent "Show cluster health"
 ```
-
-### Example Queries
-
-**Health Monitoring:**
-```
-"Are there any unhealthy nodes?"
-"Show me cluster health status"
-"What filesystem alerts are active?"
-```
-
-**Storage Management:**
-```
-"List all filesystems"
-"Create fileset project-data in gpfs01"
-"Mount filesystem scratch on node3"
-```
-
-**Quota Management:**
-```
-"Set 10TB quota on fileset user-homes"
-"Show usage for fileset project-x"
-"List quotas exceeding 80%"
-```
-
-**Administration:**
-```
-"Create snapshot daily-backup in gpfs01"
-"List all snapshots"
-"Show cluster configuration"
-```
-
-## LLM Reasoning
-
-When LLM mode is enabled via BeeAI Framework's RequirementAgent, agents gain enhanced capabilities:
-
-| Feature | Pattern Mode | LLM Mode |
-|---------|--------------|----------|
-| Intent Classification | Regex patterns | Semantic understanding |
-| Parameter Extraction | Keyword matching | Natural language parsing |
-| Multi-step Planning | Not supported | RequirementAgent chains |
-| Ambiguity Handling | Fails | Clarifying questions |
-| Complex Queries | Limited | Full support |
-
-Example of LLM advantage:
-```
-Query: "The project-x fileset is almost full, increase the quota to handle next quarter's data growth"
-
-Pattern Mode: May fail to extract parameters
-LLM Mode: Extracts fileset=project-x, understands quota increase intent, can ask for specific limit
-```
-
-## Deployment
 
 ### Docker
 
@@ -246,96 +157,34 @@ LLM Mode: Extracts fileset=project-x, understands quota increase intent, can ask
 # Build
 docker build -t scale-agents:latest .
 
-# Run with docker-compose
-docker-compose up -d
-
-# View logs
-docker-compose logs -f
+# Run
+docker run -p 8080:8080 \
+  -e SCALE_AGENTS_MCP_SERVER_URL=http://scale-mcp:8000/mcp \
+  scale-agents:latest
 ```
 
-### AgentStack UI
+## Usage Examples
 
-1. Push to GitHub repository
-2. In AgentStack UI, click "Add new agent"
-3. Select "Github repository URL"
-4. Enter: `https://github.ibm.com/HPC-POCs/scale-agents`
+```text
+User: Show cluster health
+Agent: [Routes to Health handler] -> Returns health overview
 
-See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for detailed deployment instructions.
+User: List all filesystems
+Agent: [Routes to Storage handler] -> Returns filesystem list
 
-## Development
+User: What's the quota for fileset data01?
+Agent: [Routes to Quota handler] -> Returns quota information
 
-```bash
-# Install dev dependencies
-uv pip install -e ".[dev]"
+User: Analyze performance bottlenecks
+Agent: [Routes to Performance handler] -> Returns performance analysis
 
-# Run tests
-pytest
-
-# Run tests with coverage
-pytest --cov=scale_agents --cov-report=html
-
-# Type checking
-mypy src/
-
-# Linting
-ruff check src/
-ruff format src/
-
-# Pre-commit hooks
-pre-commit install
+User: Create a snapshot of fs01
+Agent: [Routes to Admin handler] -> Creates snapshot
 ```
 
-See [docs/TESTING.md](docs/TESTING.md) for testing guide.
+## AgentStack Architecture Note
 
-## Security
-
-- **Tool Whitelisting**: Each agent restricted to specific tool subset (least privilege)
-- **Confirmation Gates**: 35 destructive operations require explicit confirmation
-- **Risk Levels**: HIGH (13 tools), MEDIUM (22 tools), LOW classification
-- **Read-only Agents**: Health and Performance agents have no write access
-- **Domain Isolation**: Storage Scale domain header for multi-tenancy
-- **Audit Trail**: Structured JSON logging with operation tracking
-
-## Project Structure
-
-```
-scale-agents/
-├── src/scale_agents/
-│   ├── agents/
-│   │   ├── base.py           # Base agent class with tool whitelisting
-│   │   ├── llm_agent.py      # LLM-powered agent base
-│   │   ├── orchestrator.py   # Intent router (pattern + LLM)
-│   │   ├── health.py         # Health monitoring (read-only)
-│   │   ├── storage.py        # Storage management
-│   │   ├── quota.py          # Quota management
-│   │   ├── performance.py    # Performance analysis (read-only)
-│   │   └── admin.py          # Cluster administration
-│   ├── config/
-│   │   ├── settings.py       # YAML + env configuration
-│   │   └── tool_mappings.py  # Tool whitelists and risk levels
-│   ├── core/
-│   │   ├── exceptions.py     # Custom exceptions
-│   │   ├── logging.py        # Structured logging
-│   │   └── reasoning.py      # LLM reasoning layer
-│   ├── tools/
-│   │   ├── mcp_client.py     # Async MCP client
-│   │   ├── confirmable.py    # Confirmation gate system
-│   │   └── response_formatter.py
-│   └── server.py             # AgentStack server entry point
-├── tests/                    # Unit and integration tests
-├── docs/                     # Documentation
-├── agent.yaml                # AgentStack manifest
-├── config.yaml               # Configuration file
-├── Dockerfile
-├── docker-compose.yml
-└── pyproject.toml
-```
-
-## Related Projects
-
-- [scale-mcp-server](https://github.ibm.com/HPC-POCs/scale-mcp-server): MCP server for Storage Scale REST API
-- [BeeAI AgentStack](https://agentstack.beeai.dev): Agent hosting platform
-- [BeeAI Framework](https://github.com/i-am-bee/beeai-framework): LLM agent framework
+AgentStack SDK only supports one agent per server instance. Scale Agents implements this constraint by exposing a single `scale_agent` that internally routes to specialized handlers based on intent classification.
 
 ## License
 
