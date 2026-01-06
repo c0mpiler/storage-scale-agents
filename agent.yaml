@@ -1,0 +1,133 @@
+# Agent manifest for BeeAI AgentStack
+# This file describes the agent for discovery and deployment
+
+name: scale-agents
+version: 1.0.0
+description: |
+  IBM Storage Scale AI Agents for cluster management, health monitoring, 
+  storage operations, quota management, and administration.
+
+# Agent metadata
+metadata:
+  author: IBM Storage Team
+  license: Apache-2.0
+  homepage: https://github.com/IBM/scale-agents
+  documentation: https://github.com/IBM/scale-agents#readme
+  tags:
+    - storage
+    - ibm
+    - gpfs
+    - infrastructure
+    - monitoring
+    - administration
+
+# Runtime configuration
+runtime:
+  # Container-based deployment
+  type: container
+  image: scale-agents:latest
+  
+  # Build from source
+  dockerfile: Dockerfile
+  
+  # Entry point
+  command: ["python", "-m", "scale_agents.server"]
+  
+  # Health check
+  healthcheck:
+    path: /health
+    interval: 30s
+    timeout: 10s
+    retries: 3
+
+# Server configuration
+server:
+  host: 0.0.0.0
+  port: 8080
+  protocol: http
+
+# Exposed agents
+agents:
+  - name: scale_orchestrator
+    description: Routes requests to appropriate specialized agents based on intent
+    capabilities:
+      - intent_classification
+      - agent_routing
+      - help
+    
+  - name: health_agent
+    description: Monitors cluster health, node status, and events
+    capabilities:
+      - health_monitoring
+      - event_tracking
+      - diagnostics
+    read_only: true
+    
+  - name: storage_agent
+    description: Manages filesystems, filesets, and storage pools
+    capabilities:
+      - filesystem_management
+      - fileset_lifecycle
+      - mount_operations
+      - storage_pools
+    
+  - name: quota_agent
+    description: Manages quotas and monitors capacity usage
+    capabilities:
+      - quota_management
+      - usage_monitoring
+      - capacity_planning
+    
+  - name: performance_agent
+    description: Analyzes performance metrics and bottlenecks
+    capabilities:
+      - performance_analysis
+      - bottleneck_detection
+      - metrics_collection
+    read_only: true
+    
+  - name: admin_agent
+    description: Handles cluster administration and snapshots
+    capabilities:
+      - snapshot_management
+      - node_lifecycle
+      - cluster_configuration
+      - remote_clusters
+
+# Required environment variables
+env:
+  required:
+    - name: SCALE_AGENTS_MCP_SERVER_URL
+      description: URL of the scale-mcp-server endpoint
+      example: http://localhost:8000/mcp
+      
+  optional:
+    - name: SCALE_AGENTS_LLM_ENABLED
+      description: Enable LLM-powered reasoning
+      default: "false"
+      
+    - name: SCALE_AGENTS_LLM_PROVIDER
+      description: LLM provider (ollama, openai, anthropic)
+      
+    - name: SCALE_AGENTS_LLM_MODEL
+      description: LLM model name
+      
+    - name: SCALE_AGENTS_REQUIRE_CONFIRMATION
+      description: Require confirmation for destructive operations
+      default: "true"
+
+# Dependencies
+dependencies:
+  services:
+    - name: scale-mcp-server
+      description: IBM Storage Scale MCP Server
+      url: http://localhost:8000/mcp
+      required: true
+
+# Resource requirements
+resources:
+  cpu: 0.5
+  memory: 512Mi
+  limits:
+    cpu: 2
+    memory: 2Gi

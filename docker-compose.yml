@@ -1,0 +1,46 @@
+services:
+  scale-agents:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: scale-agents:latest
+    container_name: scale-agents
+    ports:
+      - "8080:8080"
+    environment:
+      # MCP Server (required)
+      - SCALE_AGENTS_MCP_SERVER_URL=http://163.66.86.14:8000/mcp
+      - SCALE_AGENTS_MCP_TIMEOUT=60
+      - SCALE_AGENTS_MCP_DOMAIN=StorageScaleDomain
+      
+      # Server
+      - SCALE_AGENTS_HOST=0.0.0.0
+      - SCALE_AGENTS_PORT=8080
+      
+      # LLM (optional)
+      - SCALE_AGENTS_LLM_ENABLED=true
+      - SCALE_AGENTS_LLM_PROVIDER=ollama
+      - SCALE_AGENTS_LLM_MODEL=qwen3:30b-a3b
+      - SCALE_AGENTS_LLM_BASE_URL=http://host.docker.internal:11434
+      
+      # Security
+      - SCALE_AGENTS_REQUIRE_CONFIRMATION=true
+      
+      # Logging
+      - SCALE_AGENTS_LOG_LEVEL=INFO
+      - SCALE_AGENTS_LOG_FORMAT=json
+    volumes:
+      - ./config.yaml:/app/config.yaml:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    networks:
+      - scale-network
+
+networks:
+  scale-network:
+    driver: bridge
