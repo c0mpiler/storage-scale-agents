@@ -1,43 +1,43 @@
 """Core module for Scale Agents."""
 
-from scale_agents.core.logging import get_logger, setup_logging
 from scale_agents.core.exceptions import (
-    ScaleAgentError,
+    AgentRoutingError,
+    ConfirmationRequiredError,
     MCPConnectionError,
     MCPToolError,
-    ConfirmationRequiredError,
-    AgentRoutingError,
-    ValidationError,
+    ScaleAgentError,
     ToolNotAllowedError,
+    ValidationError,
 )
+from scale_agents.core.logging import get_logger, setup_logging
 
 __all__ = [
-    "get_logger",
-    "setup_logging",
-    "ScaleAgentError",
+    "AgentRoutingError",
+    "ConfirmationRequiredError",
     "MCPConnectionError",
     "MCPToolError",
-    "ConfirmationRequiredError",
-    "AgentRoutingError",
-    "ValidationError",
+    "ScaleAgentError",
     "ToolNotAllowedError",
+    "ValidationError",
+    "get_logger",
+    "setup_logging",
 ]
 
 # Optional LLM reasoning exports
 try:
-    from scale_agents.core.reasoning import (
+    from scale_agents.core.reasoning import (  # noqa: F401
         LLMReasoner,
         ReasoningResult,
-        get_reasoner,
         classify_with_llm,
+        get_reasoner,
         select_tools_with_llm,
     )
 
     __all__.extend([
         "LLMReasoner",
         "ReasoningResult",
-        "get_reasoner",
         "classify_with_llm",
+        "get_reasoner",
         "select_tools_with_llm",
     ])
 except ImportError:

@@ -6,15 +6,18 @@ including setting quotas and checking usage.
 
 from __future__ import annotations
 
+import contextlib
 import re
-
-from a2a.types import Message
-from agentstack_sdk.server import Server
-from agentstack_sdk.server.context import RunContext
-from agentstack_sdk.a2a.types import AgentMessage
+from typing import TYPE_CHECKING
 
 from scale_agents.agents.base import BaseScaleAgent
 from scale_agents.config.tool_mappings import QUOTA_TOOLS
+
+if TYPE_CHECKING:
+    from a2a.types import Message
+    from agentstack_sdk.a2a.types import AgentMessage
+    from agentstack_sdk.server import Server
+    from agentstack_sdk.server.context import RunContext
 
 
 class QuotaAgent(BaseScaleAgent):
@@ -269,17 +272,14 @@ class QuotaAgent(BaseScaleAgent):
 
         # Try to extract usage data
         content = result
-        if isinstance(result, dict):
-            if "content" in result:
-                content = result["content"]
-                if isinstance(content, list) and content:
-                    content = content[0]
-                    if isinstance(content, dict) and "text" in content:
-                        import orjson
-                        try:
-                            content = orjson.loads(content["text"])
-                        except Exception:
-                            pass
+        if isinstance(result, dict) and "content" in result:
+            content = result["content"]
+            if isinstance(content, list) and content:
+                content = content[0]
+                if isinstance(content, dict) and "text" in content:
+                    import orjson
+                    with contextlib.suppress(Exception):
+                        content = orjson.loads(content["text"])
 
         if isinstance(content, dict):
             used = content.get("blockUsage", content.get("used", 0))

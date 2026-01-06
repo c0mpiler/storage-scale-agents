@@ -6,13 +6,15 @@ for enhanced reasoning, tool selection, and multi-step operations.
 
 from __future__ import annotations
 
-from typing import Any, FrozenSet
-
-from a2a.types import Message
+from typing import TYPE_CHECKING, Any
 
 from scale_agents.agents.base import BaseScaleAgent
-from scale_agents.config.tool_mappings import AgentType
 from scale_agents.core.logging import get_logger
+
+if TYPE_CHECKING:
+    from a2a.types import Message
+
+    from scale_agents.config.tool_mappings import AgentType
 
 logger = get_logger(__name__)
 
@@ -21,9 +23,8 @@ _HAS_BEEAI = False
 try:
     from beeai_framework.agents.requirement.agent import RequirementAgent
     from beeai_framework.backend import ChatModel
-    from beeai_framework.tools.mcp import McpToolset, StreamableHTTPConnectionParams
     from beeai_framework.memory import UnconstrainedMemory
-    from beeai_framework.tools import Tool
+    from beeai_framework.tools.mcp import McpToolset, StreamableHTTPConnectionParams
 
     _HAS_BEEAI = True
 except ImportError:
@@ -43,7 +44,7 @@ class LLMPoweredAgent(BaseScaleAgent):
         self,
         name: str,
         description: str,
-        allowed_tools: FrozenSet[str],
+        allowed_tools: frozenset[str],
         agent_type: AgentType,
         read_only: bool = True,
         system_prompt: str | None = None,

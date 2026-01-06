@@ -54,8 +54,8 @@ server:
   # Host to bind
   host: "0.0.0.0"
 
-  # Port to bind
-  port: 8080
+  # Port to bind (AgentStack default: 10000)
+  port: 10000
 
 # Security
 # --------

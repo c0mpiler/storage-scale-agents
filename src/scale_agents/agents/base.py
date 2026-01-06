@@ -7,12 +7,11 @@ from __future__ import annotations
 
 import re
 from abc import ABC, abstractmethod
-from typing import Any, FrozenSet
+from typing import TYPE_CHECKING, Any
 
-from a2a.types import Message
 from a2a.utils.message import get_message_text
 
-from scale_agents.config.tool_mappings import DESTRUCTIVE_TOOLS, get_tool_risk_level
+from scale_agents.config.tool_mappings import DESTRUCTIVE_TOOLS
 from scale_agents.core.exceptions import (
     ConfirmationRequiredError,
     MCPToolError,
@@ -22,6 +21,9 @@ from scale_agents.core.logging import get_logger
 from scale_agents.tools.confirmable import check_confirmation, requires_confirmation
 from scale_agents.tools.mcp_client import MCPClient
 from scale_agents.tools.response_formatter import format_error_response, format_response
+
+if TYPE_CHECKING:
+    from a2a.types import Message
 
 
 class BaseScaleAgent(ABC):
@@ -39,7 +41,7 @@ class BaseScaleAgent(ABC):
         self,
         name: str,
         description: str,
-        allowed_tools: FrozenSet[str],
+        allowed_tools: frozenset[str],
         read_only: bool = True,
     ) -> None:
         """Initialize the agent.

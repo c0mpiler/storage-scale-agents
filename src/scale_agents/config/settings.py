@@ -14,7 +14,7 @@ import os
 from pathlib import Path
 from typing import Any
 
-from pydantic import Field, field_validator, model_validator
+from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # Try to import YAML support
@@ -152,10 +152,10 @@ class ServerSettings(BaseSettings):
         description="Host to bind the server",
     )
     port: int = Field(
-        default=8080,
+        default=10000,
         ge=1,
         le=65535,
-        description="Port to bind the server",
+        description="Port to bind the server (AgentStack default: 10000)",
     )
 
 

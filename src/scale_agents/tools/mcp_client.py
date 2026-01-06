@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import asyncio
 from contextlib import asynccontextmanager
-from typing import Any, AsyncIterator
+from typing import TYPE_CHECKING, Any
 
 import httpx
 import orjson
@@ -22,6 +22,9 @@ from tenacity import (
 from scale_agents.config.settings import settings
 from scale_agents.core.exceptions import MCPConnectionError, MCPToolError
 from scale_agents.core.logging import get_logger
+
+if TYPE_CHECKING:
+    from collections.abc import AsyncIterator
 
 logger = get_logger(__name__)
 

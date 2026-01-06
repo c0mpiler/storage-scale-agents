@@ -11,12 +11,11 @@ from datetime import datetime, timedelta
 from enum import Enum
 from typing import Any
 
+from scale_agents.config.settings import settings
 from scale_agents.config.tool_mappings import (
     DESTRUCTIVE_TOOLS,
-    HIGH_RISK_TOOLS,
     get_tool_risk_level,
 )
-from scale_agents.config.settings import settings
 from scale_agents.core.exceptions import ConfirmationRequiredError
 from scale_agents.core.logging import get_logger
 

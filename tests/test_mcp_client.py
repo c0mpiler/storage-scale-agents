@@ -1,11 +1,11 @@
 """Tests for the MCP client."""
 
-import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
-import httpx
+from unittest.mock import AsyncMock, patch
 
+import pytest
+
+from scale_agents.core.exceptions import MCPConnectionError
 from scale_agents.tools.mcp_client import MCPClient
-from scale_agents.core.exceptions import MCPConnectionError, MCPToolError
 
 
 class TestMCPClient:
@@ -40,7 +40,11 @@ class TestMCPClient:
     @pytest.mark.asyncio
     async def test_connect_sets_initialized(self, client):
         """Connect should set initialized flag."""
-        with patch.object(client, "_initialize_session", new_callable=AsyncMock):
+        with (
+            patch("httpx.AsyncClient") as mock_async_client,
+            patch.object(client, "_initialize_session", new_callable=AsyncMock),
+        ):
+            mock_async_client.return_value = AsyncMock()
             await client.connect()
             assert client._initialized is True
 
@@ -84,7 +88,7 @@ class TestMCPClientContextManager:
         """Context manager should connect on enter and disconnect on exit."""
         with patch.object(MCPClient, "connect", new_callable=AsyncMock) as mock_connect:
             with patch.object(MCPClient, "disconnect", new_callable=AsyncMock) as mock_disconnect:
-                async with MCPClient() as client:
+                async with MCPClient():
                     mock_connect.assert_called_once()
 
                 mock_disconnect.assert_called_once()
@@ -95,7 +99,7 @@ class TestMCPClientContextManager:
         with patch.object(MCPClient, "connect", new_callable=AsyncMock):
             with patch.object(MCPClient, "disconnect", new_callable=AsyncMock) as mock_disconnect:
                 try:
-                    async with MCPClient() as client:
+                    async with MCPClient():
                         raise ValueError("Test error")
                 except ValueError:
                     pass

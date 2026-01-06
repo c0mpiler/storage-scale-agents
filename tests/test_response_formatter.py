@@ -1,12 +1,11 @@
 """Tests for response formatting utilities."""
 
-import pytest
 
 from scale_agents.tools.response_formatter import (
-    format_response,
     format_error_response,
-    format_list_response,
     format_health_response,
+    format_list_response,
+    format_response,
 )
 
 

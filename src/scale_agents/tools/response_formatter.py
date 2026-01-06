@@ -5,7 +5,6 @@ Provides consistent formatting of MCP tool responses for display to users.
 
 from __future__ import annotations
 
-import json
 from typing import Any
 
 import orjson
@@ -101,10 +100,7 @@ def format_list_response(
 
     displayed = items[:max_items]
     for idx, item in enumerate(displayed, 1):
-        if item_formatter:
-            formatted = item_formatter(item)
-        else:
-            formatted = _format_list_item(item)
+        formatted = item_formatter(item) if item_formatter else _format_list_item(item)
         lines.append(f"{idx}. {formatted}")
 
     if len(items) > max_items:

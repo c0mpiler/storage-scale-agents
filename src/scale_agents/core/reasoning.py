@@ -27,9 +27,8 @@ _HAS_BEEAI = False
 try:
     from beeai_framework.agents.requirement.agent import RequirementAgent
     from beeai_framework.backend import ChatModel
-    from beeai_framework.backend.chat import ChatModelInput
-    from beeai_framework.tools.mcp import McpToolset, StreamableHTTPConnectionParams
     from beeai_framework.memory import UnconstrainedMemory
+    from beeai_framework.tools.mcp import McpToolset, StreamableHTTPConnectionParams
 
     _HAS_BEEAI = True
 except ImportError:

@@ -13,22 +13,20 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from a2a.types import Message
-from agentstack_sdk.server import Server
-from agentstack_sdk.server.context import RunContext
-from agentstack_sdk.a2a.types import AgentMessage
-
-from scale_agents.agents.base import BaseScaleAgent
-from scale_agents.agents.health import HealthAgent
-from scale_agents.agents.storage import StorageAgent
-from scale_agents.agents.quota import QuotaAgent
-from scale_agents.agents.performance import PerformanceAgent
 from scale_agents.agents.admin import AdminAgent
+from scale_agents.agents.health import HealthAgent
+from scale_agents.agents.performance import PerformanceAgent
+from scale_agents.agents.quota import QuotaAgent
+from scale_agents.agents.storage import StorageAgent
 from scale_agents.config.tool_mappings import AgentType
 from scale_agents.core.exceptions import AgentRoutingError
 from scale_agents.core.logging import get_logger
+
+if TYPE_CHECKING:
+    from a2a.types import Message
+
 
 logger = get_logger(__name__)
 
@@ -133,7 +131,7 @@ class Orchestrator:
         self.use_llm = use_llm
 
         # Initialize specialized agents
-        self.agents: dict[AgentType, BaseScaleAgent] = {
+        self.agents: dict[AgentType, object] = {
             AgentType.HEALTH: HealthAgent(),
             AgentType.STORAGE: StorageAgent(),
             AgentType.QUOTA: QuotaAgent(),
@@ -232,7 +230,6 @@ class Orchestrator:
         # Try LLM reasoning if enabled
         if self._reasoner is not None and self._reasoner.enabled:
             try:
-                from scale_agents.core.reasoning import ReasoningResult
 
                 result = await self._reasoner.classify_intent(text)
 
@@ -314,38 +311,38 @@ class Orchestrator:
             "I can help you with the following:",
             "",
             "**Health Monitoring** (SREs, NOC)",
-            "• Check cluster and node health status",
-            "• View health events and alerts",
-            "• Monitor filesystem health",
+            "- Check cluster and node health status",
+            "- View health events and alerts",
+            "- Monitor filesystem health",
             "",
             "**Storage Management** (Storage Admins)",
-            "• List and manage filesystems",
-            "• Create, delete, link filesets",
-            "• Mount/unmount filesystems",
-            "• View storage pools",
+            "- List and manage filesystems",
+            "- Create, delete, link filesets",
+            "- Mount/unmount filesystems",
+            "- View storage pools",
             "",
             "**Quota Management** (Storage Admins, Project Leads)",
-            "• View and set quotas",
-            "• Monitor capacity usage",
-            "• Delete quotas",
+            "- View and set quotas",
+            "- Monitor capacity usage",
+            "- Delete quotas",
             "",
             "**Performance Analysis** (Performance Engineers)",
-            "• Analyze performance bottlenecks",
-            "• Review node and filesystem metrics",
-            "• Investigate latency issues",
+            "- Analyze performance bottlenecks",
+            "- Review node and filesystem metrics",
+            "- Investigate latency issues",
             "",
             "**Administration** (Cluster Admins)",
-            "• Manage snapshots",
-            "• Start/stop nodes",
-            "• Configure cluster settings",
-            "• Manage remote clusters and NSDs",
+            "- Manage snapshots",
+            "- Start/stop nodes",
+            "- Configure cluster settings",
+            "- Manage remote clusters and NSDs",
             "",
             "**Example Queries:**",
-            "• 'Are there any unhealthy nodes?'",
-            "• 'List filesets in filesystem gpfs01'",
-            "• 'Set 10TB quota on fileset project-data'",
-            "• 'Create snapshot daily-backup in gpfs01'",
-            "• 'Analyze performance bottlenecks'",
+            "- 'Are there any unhealthy nodes?'",
+            "- 'List filesets in filesystem gpfs01'",
+            "- 'Set 10TB quota on fileset project-data'",
+            "- 'Create snapshot daily-backup in gpfs01'",
+            "- 'Analyze performance bottlenecks'",
         ]
         return "\n".join(lines)
 
@@ -354,30 +351,10 @@ class Orchestrator:
         return (
             "I wasn't sure what you'd like me to help with. "
             "Here are some things I can do:\n\n"
-            "• **Health**: Check cluster health, node status, events\n"
-            "• **Storage**: Manage filesystems and filesets\n"
-            "• **Quota**: Set quotas and check usage\n"
-            "• **Performance**: Analyze bottlenecks and metrics\n"
-            "• **Admin**: Manage snapshots, nodes, clusters\n\n"
+            "- **Health**: Check cluster health, node status, events\n"
+            "- **Storage**: Manage filesystems and filesets\n"
+            "- **Quota**: Set quotas and check usage\n"
+            "- **Performance**: Analyze bottlenecks and metrics\n"
+            "- **Admin**: Manage snapshots, nodes, clusters\n\n"
             "Could you please rephrase your request or say 'help' for more details?"
         )
-
-
-def register_orchestrator(server: Server, use_llm: bool = False) -> None:
-    """Register the Orchestrator with an AgentStack server.
-
-    Args:
-        server: The AgentStack server instance.
-        use_llm: If True, enable LLM-powered reasoning.
-    """
-    orchestrator = Orchestrator(use_llm=use_llm)
-
-    @server.register(
-        name="scale_orchestrator",
-        description=orchestrator.description,
-    )
-    async def orchestrator_handler(context: RunContext, request: AgentMessage) -> str:
-        """Handle incoming requests through the orchestrator."""
-        message = request.message
-        context_id = getattr(context, "context_id", None)
-        return await orchestrator.process(message, context_id)

@@ -1,6 +1,5 @@
 """Tests for tool mappings and configuration."""
 
-import pytest
 
 from scale_agents.config.tool_mappings import (
     ADMIN_TOOLS,
@@ -8,7 +7,6 @@ from scale_agents.config.tool_mappings import (
     HEALTH_TOOLS,
     HIGH_RISK_TOOLS,
     PERFORMANCE_TOOLS,
-    QUOTA_TOOLS,
     STORAGE_TOOLS,
     AgentType,
     get_tool_risk_level,

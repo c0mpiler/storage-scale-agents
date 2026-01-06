@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Final, FrozenSet
+from typing import Final
 
 
 class AgentType(str, Enum):
@@ -29,14 +29,14 @@ class AgentCapability:
     agent_type: AgentType
     name: str
     description: str
-    tools: FrozenSet[str]
+    tools: frozenset[str]
     read_only: bool = True
     requires_elevated_access: bool = False
     personas: tuple[str, ...] = field(default_factory=tuple)
 
 
 # Health Agent Tools - Read-only monitoring and diagnostics
-HEALTH_TOOLS: Final[FrozenSet[str]] = frozenset([
+HEALTH_TOOLS: Final[frozenset[str]] = frozenset([
     "get_node_health_states",
     "get_node_health_events",
     "get_filesystem_health_states",
@@ -49,7 +49,7 @@ HEALTH_TOOLS: Final[FrozenSet[str]] = frozenset([
 ])
 
 # Storage Agent Tools - Filesystem and fileset management
-STORAGE_TOOLS: Final[FrozenSet[str]] = frozenset([
+STORAGE_TOOLS: Final[frozenset[str]] = frozenset([
     # Read operations
     "list_filesystems",
     "get_filesystem",
@@ -71,7 +71,7 @@ STORAGE_TOOLS: Final[FrozenSet[str]] = frozenset([
 ])
 
 # Quota Agent Tools - Capacity management
-QUOTA_TOOLS: Final[FrozenSet[str]] = frozenset([
+QUOTA_TOOLS: Final[frozenset[str]] = frozenset([
     # Read operations
     "list_quotas",
     "get_fileset_usage",
@@ -81,7 +81,7 @@ QUOTA_TOOLS: Final[FrozenSet[str]] = frozenset([
 ])
 
 # Performance Agent Tools - Read-only performance analysis
-PERFORMANCE_TOOLS: Final[FrozenSet[str]] = frozenset([
+PERFORMANCE_TOOLS: Final[frozenset[str]] = frozenset([
     "get_filesystem_health_states",
     "get_node_health_states",
     "get_node_health_events",
@@ -95,7 +95,7 @@ PERFORMANCE_TOOLS: Final[FrozenSet[str]] = frozenset([
 ])
 
 # Admin Agent Tools - Cluster administration
-ADMIN_TOOLS: Final[FrozenSet[str]] = frozenset([
+ADMIN_TOOLS: Final[frozenset[str]] = frozenset([
     # Read operations
     "list_clusters",
     "list_remote_clusters",
@@ -147,7 +147,7 @@ ADMIN_TOOLS: Final[FrozenSet[str]] = frozenset([
 ])
 
 # Destructive operations requiring explicit confirmation
-DESTRUCTIVE_TOOLS: Final[FrozenSet[str]] = frozenset([
+DESTRUCTIVE_TOOLS: Final[frozenset[str]] = frozenset([
     # Fileset operations
     "create_fileset",
     "delete_fileset",
@@ -200,7 +200,7 @@ DESTRUCTIVE_TOOLS: Final[FrozenSet[str]] = frozenset([
 ])
 
 # High-risk operations that can cause data loss
-HIGH_RISK_TOOLS: Final[FrozenSet[str]] = frozenset([
+HIGH_RISK_TOOLS: Final[frozenset[str]] = frozenset([
     "delete_fileset",
     "delete_filesystem",
     "delete_snapshot",
@@ -265,7 +265,7 @@ AGENT_CAPABILITIES: Final[dict[AgentType, AgentCapability]] = {
 }
 
 
-def get_tools_for_agent(agent_type: AgentType) -> FrozenSet[str]:
+def get_tools_for_agent(agent_type: AgentType) -> frozenset[str]:
     """Get the set of tools available for a specific agent type."""
     capability = AGENT_CAPABILITIES.get(agent_type)
     if capability is None:

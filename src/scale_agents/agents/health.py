@@ -6,14 +6,14 @@ node status, and filesystem health events.
 
 from __future__ import annotations
 
-from a2a.types import Message
-from agentstack_sdk.server import Server
-from agentstack_sdk.server.context import RunContext
-from agentstack_sdk.a2a.types import AgentMessage
+from typing import TYPE_CHECKING
 
 from scale_agents.agents.base import BaseScaleAgent
 from scale_agents.config.tool_mappings import HEALTH_TOOLS
 from scale_agents.tools.response_formatter import format_health_response
+
+if TYPE_CHECKING:
+    from a2a.types import Message
 
 
 class HealthAgent(BaseScaleAgent):
@@ -244,22 +244,3 @@ class HealthAgent(BaseScaleAgent):
             lines.append(f"**Health States:** Unable to retrieve ({e})")
 
         return "\n".join(lines)
-
-
-def register_health_agent(server: Server) -> None:
-    """Register the Health Agent with an AgentStack server.
-
-    Args:
-        server: The AgentStack server instance.
-    """
-    agent = HealthAgent()
-
-    @server.register(
-        name="health_agent",
-        description=agent.description,
-    )
-    async def health_handler(context: RunContext, request: AgentMessage) -> str:
-        """Handle health monitoring requests."""
-        message = request.message
-        context_id = getattr(context, "context_id", None)
-        return await agent.process(message, context_id)

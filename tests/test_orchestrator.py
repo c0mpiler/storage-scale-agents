@@ -1,11 +1,10 @@
 """Tests for the Orchestrator agent."""
 
+
 import pytest
-from unittest.mock import MagicMock
 
 from scale_agents.agents.orchestrator import (
     Intent,
-    IntentClassification,
     Orchestrator,
 )
 

@@ -6,14 +6,17 @@ and helps identify performance issues.
 
 from __future__ import annotations
 
-from a2a.types import Message
-from agentstack_sdk.server import Server
-from agentstack_sdk.server.context import RunContext
-from agentstack_sdk.a2a.types import AgentMessage
+from typing import TYPE_CHECKING
 
 from scale_agents.agents.base import BaseScaleAgent
 from scale_agents.config.tool_mappings import PERFORMANCE_TOOLS
 from scale_agents.tools.response_formatter import format_health_response
+
+if TYPE_CHECKING:
+    from a2a.types import Message
+    from agentstack_sdk.a2a.types import AgentMessage
+    from agentstack_sdk.server import Server
+    from agentstack_sdk.server.context import RunContext
 
 
 class PerformanceAgent(BaseScaleAgent):
@@ -178,7 +181,7 @@ class PerformanceAgent(BaseScaleAgent):
         node_spec = node if node else ":all:"
 
         # Gather data
-        status = await self.call_tool(
+        await self.call_tool(
             "get_nodes_status",
             {},
             context_id,

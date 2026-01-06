@@ -4,15 +4,19 @@
 name: scale-agents
 version: 1.0.0
 description: |
-  IBM Storage Scale AI Agents for cluster management, health monitoring, 
+  IBM Storage Scale AI Agent for cluster management, health monitoring, 
   storage operations, quota management, and administration.
+  
+  This agent provides a unified interface to IBM Storage Scale clusters,
+  with intelligent routing to specialized capabilities for health monitoring,
+  storage management, quota handling, performance analysis, and administration.
 
 # Agent metadata
 metadata:
   author: IBM Storage Team
   license: Apache-2.0
-  homepage: https://github.com/IBM/scale-agents
-  documentation: https://github.com/IBM/scale-agents#readme
+  homepage: https://github.com/c0mpiler/storage-scale-agents
+  documentation: https://github.com/c0mpiler/storage-scale-agents#readme
   tags:
     - storage
     - ibm
@@ -20,10 +24,11 @@ metadata:
     - infrastructure
     - monitoring
     - administration
+    - mcp
 
 # Runtime configuration
 runtime:
-  # Container-based deployment
+  # Container deployment
   type: container
   image: scale-agents:latest
   
@@ -40,59 +45,40 @@ runtime:
     timeout: 10s
     retries: 3
 
-# Server configuration
+# Server configuration (AgentStack standard port)
 server:
   host: 0.0.0.0
-  port: 8080
+  port: 10000
   protocol: http
 
-# Exposed agents
+# Single agent (AgentStack SDK constraint: one agent per server)
 agents:
-  - name: scale_orchestrator
-    description: Routes requests to appropriate specialized agents based on intent
-    capabilities:
-      - intent_classification
-      - agent_routing
-      - help
-    
-  - name: health_agent
-    description: Monitors cluster health, node status, and events
+  - name: scale_agent
+    description: |
+      IBM Storage Scale Agent for comprehensive cluster management.
+      
+      Routes requests to specialized internal handlers:
+      - Health: Cluster health, node status, events, diagnostics
+      - Storage: Filesystems, filesets, storage pools, NSDs
+      - Quota: Quota management, capacity monitoring, usage reports
+      - Performance: Metrics analysis, bottleneck detection
+      - Admin: Snapshots, policies, node management, cluster admin
+      
+      Examples:
+        "Show cluster health" -> Health handler
+        "List all filesystems" -> Storage handler
+        "What's the quota for fileset data01?" -> Quota handler
+        "Analyze performance bottlenecks" -> Performance handler
+        "Create a snapshot of fs01" -> Admin handler
     capabilities:
       - health_monitoring
-      - event_tracking
-      - diagnostics
-    read_only: true
-    
-  - name: storage_agent
-    description: Manages filesystems, filesets, and storage pools
-    capabilities:
-      - filesystem_management
-      - fileset_lifecycle
-      - mount_operations
-      - storage_pools
-    
-  - name: quota_agent
-    description: Manages quotas and monitors capacity usage
-    capabilities:
+      - storage_management
       - quota_management
-      - usage_monitoring
-      - capacity_planning
-    
-  - name: performance_agent
-    description: Analyzes performance metrics and bottlenecks
-    capabilities:
       - performance_analysis
-      - bottleneck_detection
-      - metrics_collection
-    read_only: true
-    
-  - name: admin_agent
-    description: Handles cluster administration and snapshots
-    capabilities:
+      - cluster_administration
       - snapshot_management
       - node_lifecycle
-      - cluster_configuration
-      - remote_clusters
+      - remote_cluster_management
 
 # Required environment variables
 env:
@@ -103,7 +89,7 @@ env:
       
   optional:
     - name: SCALE_AGENTS_LLM_ENABLED
-      description: Enable LLM-powered reasoning
+      description: Enable LLM reasoning layer
       default: "false"
       
     - name: SCALE_AGENTS_LLM_PROVIDER

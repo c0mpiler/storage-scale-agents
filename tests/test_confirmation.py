@@ -1,7 +1,9 @@
 """Tests for confirmation handling."""
 
-import pytest
+import contextlib
 from datetime import datetime, timedelta
+
+import pytest
 
 from scale_agents.config.settings import Settings
 from scale_agents.core.exceptions import ConfirmationRequiredError
@@ -10,7 +12,6 @@ from scale_agents.tools.confirmable import (
     ConfirmationStatus,
     check_confirmation,
     clear_pending_confirmations,
-    get_pending_confirmation,
     process_confirmation,
     requires_confirmation,
 )
@@ -102,8 +103,11 @@ class TestRequiresConfirmation:
 
     def test_disabled_confirmation(self, monkeypatch):
         """Should not require confirmation when disabled."""
+        # Import the module to patch its settings reference
+        import scale_agents.tools.confirmable as confirmable_module
         monkeypatch.setattr(
-            "scale_agents.tools.confirmable.settings",
+            confirmable_module,
+            "settings",
             Settings(require_confirmation=False),
         )
         assert requires_confirmation("delete_fileset", {}) is False
@@ -170,14 +174,12 @@ class TestProcessConfirmation:
         clear_pending_confirmations("confirm_test_1")
 
         # Create pending confirmation
-        try:
+        with contextlib.suppress(ConfirmationRequiredError):
             check_confirmation(
                 "delete_fileset",
                 {"filesystem": "gpfs01"},
                 context_id="confirm_test_1",
             )
-        except ConfirmationRequiredError:
-            pass
 
         # Confirm
         success, message = process_confirmation("confirm_test_1", "yes")
@@ -193,14 +195,12 @@ class TestProcessConfirmation:
         clear_pending_confirmations("confirm_test_2")
 
         # Create pending confirmation
-        try:
+        with contextlib.suppress(ConfirmationRequiredError):
             check_confirmation(
                 "delete_fileset",
                 {"filesystem": "gpfs01"},
                 context_id="confirm_test_2",
             )
-        except ConfirmationRequiredError:
-            pass
 
         # Cancel
         success, message = process_confirmation("confirm_test_2", "cancel")

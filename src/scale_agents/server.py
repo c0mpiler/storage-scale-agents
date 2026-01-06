@@ -1,7 +1,11 @@
 """AgentStack Server entry point for Scale Agents.
 
-This module initializes and runs the AgentStack server with all
-registered Scale agents.
+This module initializes and runs the AgentStack server with a single
+orchestrator agent that routes to specialized Scale agents internally.
+
+AgentStack SDK constraint: Only ONE @server.agent() decorator per server.
+The orchestrator handles routing to health, storage, quota, performance,
+and admin agents based on intent classification.
 
 Configuration is loaded from:
 1. config.yaml (if present in current directory)
@@ -9,114 +13,190 @@ Configuration is loaded from:
 3. Default values
 """
 
-from __future__ import annotations
+# from __future__ import annotations  # Disabled for AgentStack SDK compatibility
 
-import asyncio
+import os
 import signal
 import sys
-from typing import NoReturn
+from typing import TYPE_CHECKING, NoReturn
 
+from a2a.types import Message, TextPart
+from a2a.utils.message import get_message_text
+from agentstack_sdk.a2a.types import AgentMessage
 from agentstack_sdk.server import Server
+from agentstack_sdk.server.context import RunContext
 
-from scale_agents.agents import (
-    register_admin_agent,
-    register_health_agent,
-    register_orchestrator,
-    register_performance_agent,
-    register_quota_agent,
-    register_storage_agent,
-)
+from scale_agents.agents.admin import AdminAgent
+from scale_agents.agents.health import HealthAgent
+from scale_agents.agents.orchestrator import Orchestrator
+from scale_agents.agents.performance import PerformanceAgent
+from scale_agents.agents.quota import QuotaAgent
+from scale_agents.agents.storage import StorageAgent
 from scale_agents.config.settings import get_settings, reload_settings
 from scale_agents.core.logging import get_logger, setup_logging
 
+if TYPE_CHECKING:
+    pass
+
 logger = get_logger(__name__)
 
+# Create the server instance
+server = Server()
 
-def create_server() -> Server:
-    """Create and configure the AgentStack server.
+
+def _create_agents() -> dict[str, object]:
+    """Create agent instances based on configuration.
 
     Returns:
-        Configured Server instance with all agents registered.
+        Dictionary mapping agent names to their instances.
     """
     settings = get_settings()
     use_llm = settings.llm.enabled
-
-    server = Server(
-        name="scale-agents",
-        description=(
-            "IBM Storage Scale AI Agents for cluster management, "
-            "health monitoring, storage operations, and administration."
-        ),
-        version="1.0.0",
-    )
-
-    # Register orchestrator with optional LLM support
-    register_orchestrator(server, use_llm=use_llm)
-
-    # Register specialized agents based on config
     agents_config = settings.agents
 
+    instances = {
+        "orchestrator": Orchestrator(use_llm=use_llm),
+    }
+
     if agents_config.health.enabled:
-        register_health_agent(server)
-
+        instances["health"] = HealthAgent()
     if agents_config.storage.enabled:
-        register_storage_agent(server)
-
+        instances["storage"] = StorageAgent()
     if agents_config.quota.enabled:
-        register_quota_agent(server)
-
+        instances["quota"] = QuotaAgent()
     if agents_config.performance.enabled:
-        register_performance_agent(server)
-
+        instances["performance"] = PerformanceAgent()
     if agents_config.admin.enabled:
-        register_admin_agent(server)
+        instances["admin"] = AdminAgent()
 
-    registered_agents = [
-        "scale_orchestrator",
+    return instances
+
+
+# Lazy initialization of agents
+_agents: dict[str, object] | None = None
+
+
+def _get_agents() -> dict[str, object]:
+    """Get or create agent instances."""
+    global _agents
+    if _agents is None:
+        _agents = _create_agents()
+    return _agents
+
+
+def _classify_intent(text: str) -> str:
+    """Classify user intent to route to appropriate agent.
+
+    Args:
+        text: User message text.
+
+    Returns:
+        Agent name to route to.
+    """
+    text_lower = text.lower()
+
+    # Health related keywords
+    health_keywords = [
+        "health", "status", "node", "event", "diagnostic",
+        "monitoring", "alert", "state", "version", "cluster info",
     ]
-    if agents_config.health.enabled:
-        registered_agents.append("health_agent")
-    if agents_config.storage.enabled:
-        registered_agents.append("storage_agent")
-    if agents_config.quota.enabled:
-        registered_agents.append("quota_agent")
-    if agents_config.performance.enabled:
-        registered_agents.append("performance_agent")
-    if agents_config.admin.enabled:
-        registered_agents.append("admin_agent")
+    if any(kw in text_lower for kw in health_keywords):
+        return "health"
 
-    logger.info(
-        "agents_registered",
-        agents=registered_agents,
-        llm_enabled=use_llm,
+    # Storage related keywords
+    storage_keywords = [
+        "filesystem", "fileset", "mount", "unmount", "pool",
+        "storage pool", "create fs", "delete fs", "link", "unlink",
+        "nsd", "disk",
+    ]
+    if any(kw in text_lower for kw in storage_keywords):
+        return "storage"
+
+    # Quota related keywords
+    quota_keywords = [
+        "quota", "usage", "capacity", "limit", "space",
+        "disk usage", "fileset usage",
+    ]
+    if any(kw in text_lower for kw in quota_keywords):
+        return "quota"
+
+    # Performance related keywords
+    performance_keywords = [
+        "performance", "metric", "throughput", "latency",
+        "iops", "bandwidth", "bottleneck", "slow",
+    ]
+    if any(kw in text_lower for kw in performance_keywords):
+        return "performance"
+
+    # Admin related keywords
+    admin_keywords = [
+        "snapshot", "backup", "config", "admin", "remote cluster",
+        "policy", "add node", "remove node", "shutdown", "start node",
+        "stop node",
+    ]
+    if any(kw in text_lower for kw in admin_keywords):
+        return "admin"
+
+    # Default to orchestrator for complex or unclear requests
+    return "orchestrator"
+
+
+@server.agent()
+async def scale_agent(input: Message, context: RunContext):
+    """IBM Storage Scale Agent for cluster management and monitoring.
+
+    This is the single entry point for all Storage Scale operations.
+    Routes requests to specialized internal agents based on intent:
+    
+    - **Health**: Cluster health, node status, events, diagnostics
+    - **Storage**: Filesystems, filesets, storage pools, NSDs
+    - **Quota**: Quota management, capacity monitoring, usage reports
+    - **Performance**: Metrics analysis, bottleneck detection, throughput
+    - **Admin**: Snapshots, policies, node management, cluster admin
+    
+    Examples:
+        "Show cluster health" -> Health agent
+        "List all filesystems" -> Storage agent
+        "What's the quota for fileset data01?" -> Quota agent
+        "Analyze performance bottlenecks" -> Performance agent
+        "Create a snapshot of fs01" -> Admin agent
+    """
+    agents = _get_agents()
+    context_id = getattr(context, "context_id", None)
+
+    # Get message text
+    user_text = get_message_text(input) or ""
+    
+    # Classify intent and route to appropriate agent
+    intent = _classify_intent(user_text)
+    
+    # Get the target agent
+    if intent in agents:
+        agent = agents[intent]
+    else:
+        agent = agents["orchestrator"]
+    
+    logger.debug(
+        "routing_request",
+        intent=intent,
+        agent=type(agent).__name__,
+        message_preview=user_text[:100] if user_text else "",
     )
-
-    return server
-
-
-async def run_server() -> None:
-    """Run the AgentStack server."""
-    settings = get_settings()
-    server = create_server()
-
-    logger.info(
-        "starting_server",
-        host=settings.server.host,
-        port=settings.server.port,
-        mcp_server=settings.mcp.server_url,
-        llm_enabled=settings.llm.enabled,
-        llm_provider=settings.llm.provider,
-        llm_model=settings.llm.model,
-    )
-
+    
+    # Process with the selected agent
     try:
-        await server.serve(
-            host=settings.server.host,
-            port=settings.server.port,
-        )
+        result = await agent.process(input, context_id)
+        
+        # Yield as AgentMessage for proper AgentStack integration
+        if isinstance(result, str):
+            yield AgentMessage(parts=[TextPart(text=result)])
+        else:
+            yield result
+            
     except Exception as e:
-        logger.error("server_error", error=str(e))
-        raise
+        logger.exception("agent_error", agent=intent, error=str(e))
+        error_msg = f"Error processing request: {e}"
+        yield AgentMessage(parts=[TextPart(text=error_msg)])
 
 
 def handle_shutdown(signum: int, frame: object) -> NoReturn:
@@ -144,14 +224,18 @@ def run(config_path: str | None = None) -> None:
     signal.signal(signal.SIGINT, handle_shutdown)
     signal.signal(signal.SIGTERM, handle_shutdown)
 
+    # Get host and port from environment (AgentStack standard) or settings
+    host = os.getenv("HOST", settings.server.host)
+    port = int(os.getenv("PORT", settings.server.port))
+
     # Log configuration summary
     logger.info(
         "scale_agents_starting",
         version="1.0.0",
         config={
             "mcp_server": settings.mcp.server_url,
-            "host": settings.server.host,
-            "port": settings.server.port,
+            "host": host,
+            "port": port,
             "llm_enabled": settings.llm.enabled,
             "llm_provider": settings.llm.provider,
             "llm_model": settings.llm.model,
@@ -160,10 +244,23 @@ def run(config_path: str | None = None) -> None:
         },
     )
 
+    # Initialize agents
+    global _agents
+    _agents = _create_agents()
+
+    registered = list(_agents.keys())
+    logger.info(
+        "agents_initialized",
+        internal_agents=registered,
+        llm_enabled=settings.llm.enabled,
+        note="Single scale_agent routes to internal agents",
+    )
+
     # Check LLM availability if enabled
     if settings.llm.enabled:
         try:
             import beeai_framework  # noqa: F401
+
             logger.info(
                 "llm_available",
                 provider=settings.llm.provider,
@@ -175,8 +272,9 @@ def run(config_path: str | None = None) -> None:
                 message="Install with: uv pip install -e '.[llm]'",
             )
 
+    # Run server
     try:
-        asyncio.run(run_server())
+        server.run(host=host, port=port)
     except KeyboardInterrupt:
         logger.info("server_stopped_by_user")
     except Exception as e:
